@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RAYC 生态 - 矿机购买（释放模式）</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui; background: radial-gradient(circle at 20% 30%, #0a0f2a, #030617); min-height: 100vh; padding: 0; color: #f0f3ff; }
+        .glow-line { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00f2fe, #4facfe, #00f2fe, transparent); z-index: 100; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; position: relative; z-index: 2; }
+        .header { background: rgba(15, 25, 55, 0.65); backdrop-filter: blur(12px); border-radius: 32px; padding: 16px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border: 1px solid rgba(79, 172, 254, 0.3); }
+        .logo { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #aaffff, #4facfe); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .lang-select { background: rgba(0,0,0,0.5); border: 1px solid #2f4b8f; border-radius: 40px; padding: 6px 12px; color: white; font-size: 14px; cursor: pointer; }
+        .connect-btn { background: linear-gradient(95deg, #2b6ef0, #1a4ed8); color: white; border: none; padding: 10px 24px; border-radius: 60px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(27,86,230,0.4); }
+        .connect-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+        .wallet-info { font-size: 13px; color: #b3ceff; background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 40px; margin-top: 8px; font-family: monospace; text-align: center; }
+        .nav { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 28px; background: rgba(10,20,40,0.5); backdrop-filter: blur(8px); padding: 8px 20px; border-radius: 80px; border: 1px solid rgba(79,172,254,0.3); }
+        .nav-btn { background: transparent; color: #cbd5ff; border: none; padding: 8px 24px; border-radius: 40px; font-size: 16px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .nav-btn.active { background: linear-gradient(135deg, #1f3a8a, #2b4eb5); color: white; box-shadow: 0 2px 12px rgba(43,110,240,0.5); }
+        .page { display: none; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .notice { background: rgba(0,0,0,0.4); border-radius: 40px; padding: 10px 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; backdrop-filter: blur(4px); }
+        .notice-icon { background: #ff3366; padding: 4px 12px; border-radius: 40px; font-size: 14px; font-weight: bold; }
+        .notice-content { flex: 1; overflow: hidden; white-space: nowrap; }
+        .notice-text { display: inline-block; animation: scrollNotice 20s linear infinite; }
+        @keyframes scrollNotice { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .grid { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 24px; }
+        .card { background: rgba(12,22,48,0.7); backdrop-filter: blur(12px); border-radius: 32px; padding: 24px; border: 1px solid rgba(79,172,254,0.25); transition: 0.2s; flex: 1 1 360px; }
+        .card:hover { border-color: #4facfe80; }
+        .card h2 { font-size: 20px; margin-bottom: 20px; background: linear-gradient(135deg, #fff, #90b4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(79,172,254,0.2); font-size: 14px; }
+        .balance-item { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(79,172,254,0.2); font-size: 18px; font-weight: 600; }
+        input, select { width: 100%; padding: 12px 16px; margin: 8px 0; background: rgba(0,0,0,0.5); border: 1px solid #2f4b8f; border-radius: 24px; color: white; font-size: 14px; outline: none; }
+        input:focus { border-color: #4facfe; }
+        button:not(.nav-btn):not(.connect-btn) { background: linear-gradient(95deg, #2b6ef0, #1a4ed8); border: none; padding: 12px; border-radius: 60px; font-weight: 600; color: white; width: 100%; margin-top: 16px; cursor: pointer; transition: 0.2s; }
+        .miner-item, .community-item { background: rgba(0,0,0,0.3); border-radius: 24px; padding: 16px; margin-bottom: 12px; border: 1px solid #2f4b8f; }
+        .reward-rate { background: rgba(0,242,254,0.1); border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 16px; }
+        .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #6c8ecf; }
+        .copy-btn { background: #2f4b8f; border: none; color: white; padding: 4px 12px; border-radius: 20px; margin-left: 10px; cursor: pointer; font-size: 12px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .progress-bar { background: #1f3a8a; border-radius: 20px; height: 8px; width: 100%; margin: 8px 0; overflow: hidden; }
+        .progress-fill { background: #4facfe; height: 100%; width: 0%; border-radius: 20px; transition: width 0.3s; }
+        @media (max-width: 768px) { .nav-btn { padding: 6px 16px; font-size: 14px; } }
+        .loading-spinner { text-align: center; padding: 20px; color: #8aa9ff; }
+        .error-text { color: #ff7b72; font-size: 13px; margin-top: 8px; }
+        /* 外部链接按钮样式 */
+        .external-links { display: flex; gap: 16px; justify-content: center; margin-top: 8px; }
+        .external-link-btn { display: inline-block; background: linear-gradient(95deg, #2b6ef0, #1a4ed8); color: white; text-decoration: none; padding: 12px 24px; border-radius: 60px; font-weight: 600; text-align: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(27,86,230,0.4); width: auto; margin: 0; }
+        .external-link-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+        /* 代币选择按钮组 */
+        .token-buttons { display: flex; gap: 12px; margin: 8px 0; justify-content: space-between; }
+        .token-btn { background: #0f1622; border: 1px solid #2f4b8f; border-radius: 40px; padding: 10px 0; text-align: center; flex: 1; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .token-btn.active { background: linear-gradient(95deg, #2b6ef0, #1a4ed8); border-color: transparent; box-shadow: 0 2px 8px rgba(43,110,240,0.4); }
+    </style>
+</head>
+<body>
+<div class="glow-line"></div>
+<div class="container">
+    <div class="header">
+        <div class="logo">⚡ RAYC -raymond</div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <select id="langSelect" class="lang-select">
+                <option value="zh">🇨🇳 中文</option>
+                <option value="en">🇬🇧 English</option>
+            </select>
+            <div>
+                <div class="wallet-info" id="walletInfo"></div>
+                <button class="connect-btn" id="connectBtn">🔌 连接钱包</button>
+            </div>
+        </div>
+    </div>
+    <div class="nav">
+        <button class="nav-btn active" data-page="home">🏠 首页</button>
+        <button class="nav-btn" data-page="ido">💰 IDO</button>
+        <button class="nav-btn" data-page="mining">⛏️ 购买矿机</button>
+        <button class="nav-btn" data-page="community">🌿 生态社区</button>
+    </div>
+
+    <!-- 首页 -->
+    <div id="home-page" class="page active">
+        <div class="notice"><div class="notice-icon">📢 公告</div><div class="notice-content"><div class="notice-text" data-i18n="notice_text">Raymond Chain 是全球领先的区块链科技公司，专注于构建去中心化生态系统，以顶尖技术为驱动，打造安全、高效、普惠的区块链价值网络</div></div></div>
+        <div class="grid">
+            <div class="card"><h2 data-i18n="assets_title">💎 我的资产</h2>
+                <div class="balance-item"><span data-i18n="rayc_balance">RAYC 余额</span><span id="raycBalanceHome">0</span></div>
+                <div class="balance-item"><span>USDT 余额</span><span id="usdtBalanceHome">0</span></div>
+                <div class="balance-item"><span>USDC 余额</span><span id="usdcBalanceHome">0</span></div>
+                <div class="balance-item"><span>DAI 余额</span><span id="daiBalanceHome">0</span></div>
+                <div class="balance-item"><span data-i18n="pending_mining">待领取收益</span><span id="pendingMiningRewardHome">0</span></div>
+                <div class="balance-item"><span data-i18n="pending_referral">推荐奖励待领取</span><span id="pendingReferralRewardHome">0</span></div>
+            </div>
+            <div class="card"><h2 data-i18n="referral_info_title">🔗 推荐信息</h2>
+                <div class="info-row"><span data-i18n="my_referrer">我的推荐人</span><span id="myReferrer">未绑定</span></div>
+                <div class="info-row flex-between"><span data-i18n="invite_link">我的邀请链接</span><div><span id="inviteLink" style="word-break:break-all;font-size:12px"></span><button id="copyLinkBtn" class="copy-btn" data-i18n="copy_btn">复制</button></div></div>
+                <div class="info-row" style="border-bottom:none;margin-top:12px;"><span style="font-size:12px;color:#aaffaa;" data-i18n="invite_tip">💡 将邀请链接分享给朋友，对方购买IDO时自动绑定您为推荐人！挖矿推荐需单独绑定。</span></div>
+            </div>
+            <div class="card">
+                <h2>🌐 官方链接</h2>
+                <div class="external-links">
+                    <a href="https://www.raymondchain.com/raymond-rayc/index.html" class="external-link-btn" target="_blank" id="officialWebsiteBtn">官网</a>
+                    <a href="https://www.raymondchain.com/raymond-rayc/0275.html" class="external-link-btn" target="_blank" id="teamBtn">团队建设</a>
+                </div>
+                <div class="info-row" style="border-bottom:none; margin-top:12px; justify-content:center; font-size:12px; color:#aaffaa;">
+                    🔗 点击按钮访问官方网站和团队介绍
+                </div>
+            </div>
+        </div>
+        <div class="card" style="text-align:center;"><p data-i18n="footer_note">🔗 使用上方导航栏进入 IDO、矿机购买、生态社区</p><p data-i18n="note_confirm">⚡ 首次购买需两次确认（授权+购买）</p></div>
+    </div>
+
+    <!-- IDO 页面（改用按钮选择代币） -->
+    <div id="ido-page" class="page">
+        <div class="grid">
+            <div class="card"><h2 data-i18n="ido_info_title">📈 IDO 信息</h2>
+                <div class="info-row"><span data-i18n="ido_start">开始时间</span><span id="idoStartTime">-</span></div>
+                <div class="info-row"><span data-i18n="ido_end">结束时间</span><span id="idoEndTime">-</span></div>
+                <div class="info-row"><span data-i18n="ido_status">状态</span><span id="idoStatus">-</span></div>
+                <div class="info-row"><span data-i18n="ido_rate_label">兑换比例</span><span id="idoRate">1 稳定币 = - RAYC</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="idoProgressFill"></div></div>
+                <div class="info-row"><span data-i18n="ido_progress">已售/总量</span><span id="idoProgress">- / -</span></div>
+                <div class="info-row"><span data-i18n="ido_remaining">剩余代币</span><span id="idoRemaining">-</span></div>
+                <div class="info-row"><span data-i18n="pending_referral_ido">待领取推荐奖励</span><span id="pendingReferralRewardIdo">0 RAYC</span></div>
+            </div>
+            <div class="card"><h2 data-i18n="ido_participate_title">🎯 参与 IDO</h2>
+                <div class="reward-rate"><span data-i18n="referral_reward_info">推荐奖励：一级 1% | 二级 2%</span></div>
+                <!-- 代币选择按钮组，替代下拉菜单 -->
+                <div class="token-buttons" id="tokenButtons">
+                    <div class="token-btn active" data-token="usdt">USDT</div>
+                    <div class="token-btn" data-token="usdc">USDC</div>
+                    <div class="token-btn" data-token="dai">DAI</div>
+                </div>
+                <input type="number" id="payAmount" placeholder="数量" step="0.1">
+                <input type="text" id="idoReferrerAddr" placeholder="推荐人钱包地址 (可选)">
+                <button id="buyBtn" data-i18n="buy_btn">🚀 立即购买</button>
+                <div id="buyProgress" style="display:none; background:#1f3a8a; border-radius:20px; padding:10px; margin-top:10px; text-align:center;"></div>
+                <div id="buyResult" style="margin-top:12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 挖矿页面（购买模式） -->
+    <div id="mining-page" class="page">
+        <div class="grid">
+            <div class="card"><h2 data-i18n="mining_shop">⛏️ RAYC矿机</h2><div id="minerTypesList"></div></div>
+            <div class="card"><h2 data-i18n="my_miners">📦 我的矿机</h2>
+                <div id="myMinersList"></div>
+                <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                    <button id="claimAllMiningBtn" data-i18n="claim_all_btn">🎁 一键领取所有收益</button>
+                    <button id="refreshMinerListBtn" style="background:#2f4b8f;" data-i18n="refresh_btn">🔄 刷新</button>
+                </div>
+                <div id="miningResult"></div>
+            </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+            <h2>🔗 推荐管理</h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="miningReferrerAddr" placeholder="上级钱包地址 (0x...)" style="flex:2;">
+                <button id="bindMiningReferralBtn" data-i18n="bind_btn">绑定推荐人</button>
+                <button id="migrateReferralBtn" style="background:#4b6eaf;">🔄 从IDO迁移推荐关系</button>
+            </div>
+            <div id="bindResult" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <!-- 生态社区页面 -->
+    <div id="community-page" class="page">
+        <div class="grid">
+            <div class="card"><h2 data-i18n="community_list_title">🌿 社区列表</h2><div id="communityList"></div></div>
+            <div class="card"><h2 data-i18n="my_community_title">🏛️ 我的社区</h2>
+                <div class="info-row"><span data-i18n="my_community_label">所属社区</span><span id="myCommunity">未加入</span></div>
+                <div class="info-row"><span data-i18n="community_leader">社区主任</span><span id="communityLeader">-</span></div>
+                <div class="info-row"><span data-i18n="community_total_stake">社区总购买</span><span id="communityTotalStake">0 RAYC</span></div>
+                <button id="refreshCommunityBtn" style="background:#2f4b8f;" data-i18n="refresh_btn">🔄 刷新</button>
+            </div>
+        </div>
+    </div>
+    <div class="footer"><p data-i18n="auto_refresh">⚡ 数据每30秒自动刷新 | 所有操作需钱包确认</p></div>
+</div>
+
+<script>
+    // ==================== 多语言词典（仅展示中文，英文省略以简化） ====================
+    const translations = {
+        zh: {
+            assets_title: "💎 我的资产", rayc_balance: "RAYC 余额", pending_mining: "待领取收益", pending_referral: "推荐奖励待领取",
+            referral_info_title: "🔗 推荐信息", my_referrer: "我的推荐人", invite_link: "我的邀请链接", copy_btn: "复制",
+            invite_tip: "💡 将邀请链接分享给朋友，对方购买IDO时自动绑定您为推荐人！挖矿推荐需单独绑定。",
+            footer_note: "🔗 使用上方导航栏进入 IDO、矿机购买、生态社区", note_confirm: "⚡ 首次购买需两次确认（授权+购买）",
+            ido_info_title: "📈 IDO 信息", ido_start: "开始时间", ido_end: "结束时间", ido_status: "状态",
+            ido_rate_label: "兑换比例", ido_progress: "已售/总量", ido_remaining: "剩余代币",
+            pending_referral_ido: "待领取推荐奖励", ido_participate_title: "🎯 参与 IDO",
+            referral_reward_info: "推荐奖励：一级 1% | 二级 2%", buy_btn: "🚀 立即购买",
+            mining_shop: "⛏️ 矿机商城", my_miners: "📦 我的矿机", claim_all_btn: "🎁 一键领取所有收益",
+            refresh_btn: "🔄 刷新", community_list_title: "🌿 社区列表", my_community_title: "🏛️ 我的社区",
+            my_community_label: "所属社区", community_leader: "社区主任", community_total_stake: "社区总购买",
+            auto_refresh: "⚡ 数据每30秒自动刷新 | 所有操作需钱包确认",
+            notice_text: "RAYC 矿机购买 释放模式 | 每日产出自动累计 | 推荐奖励最高2%",
+            bind_btn: "绑定推荐人"
+        }
+    };
+    let currentLang = 'zh';
+    function setLanguage(lang) { /* 简单处理，不实现完整多语言切换 */ }
+    setLanguage('zh');
+
+    // ==================== 合约配置（请使用您的实际地址） ====================
+    const CONFIG = {
+        chainId: 137,
+        rayc: "0x00264cF668b959f87998f54e239D2E93D42A5Fc3",
+        ido: "0x532839689ADED86AB60D8ef182E3556522b58C76",
+        mining: "0x4635120AFAa7B9a68764240CbE8F79fc06FAEa39",   // 购买模式挖矿合约
+        community: "0xCA97Be70E10fD071Dff37b01a154EC81391A98F2", // 社区合约
+        usdt: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+        usdc: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+        dai: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+    };
+    const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+    // ABI 定义（适配购买模式）
+    const ERC20_ABI = ["function balanceOf(address) view returns (uint256)","function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
+    const IDO_ABI = [
+        "function buyUSDT(uint256 usdtAmount, address referrer)",
+        "function buyUSDC(uint256 usdcAmount, address referrer)",
+        "function buyDAI(uint256 daiAmount, address referrer)",
+        "function startTime() view returns (uint256)",
+        "function endTime() view returns (uint256)",
+        "function rate() view returns (uint256)",
+        "function totalIDOAmount() view returns (uint256)",
+        "function soldAmount() view returns (uint256)",
+        "function getRemainingTokens() view returns (uint256)",
+        "function referrer(address) view returns (address)",
+        "function purchased(address) view returns (uint256)",
+        "function level1RewardRate() view returns (uint256)",
+        "function level2RewardRate() view returns (uint256)",
+        "function owner() view returns (address)"
+    ];
+    // 购买模式挖矿合约 ABI
+    const MINING_ABI = [
+        "function minerTypes(uint256) view returns (string, uint32, uint256, uint256, uint256, uint256, uint256, uint256, bool)",
+        "function purchaseMiner(uint256 minerTypeId, uint256 amount)",
+        "function claimReward(uint256 userMinerId)",
+        "function claimAllRewards()",
+        "function getUserMiners(address) view returns (tuple(uint256 minerTypeId, uint256 amount, uint256 startTime, uint256 lastReleaseTime, uint256 totalReleased, uint256 pendingReward, bool active)[])",
+        "function getPendingReward(address user, uint256 userMinerId) view returns (uint256)",
+        "function bindReferral(address upline)",
+        "function upline(address) view returns (address)",
+        "function totalPurchased(address) view returns (uint256)",
+        "function getCommunityTotalPurchased(uint256 communityId) view returns (uint256)",
+        "function userCommunity(address) view returns (uint256)"
+    ];
+    const COMMUNITY_ABI = [
+        "function joinCommunity(uint256 communityId)",
+        "function communities(uint256) view returns (string name, address leader, uint256 totalPurchased, bool active)",
+        "function userCommunity(address) view returns (uint256)",
+        "function getCommunityMembers(uint256) view returns (address[])"
+    ];
+
+    let provider, signer, userAddress;
+    let tokenContract, idoContract, miningContract, communityContract, usdtContract, usdcContract, daiContract;
+    let refreshTimer = null;
+
+    function formatDecimals(amount, decimals) { if (!amount) return "0"; return parseFloat(ethers.utils.formatUnits(amount, decimals)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }); }
+    function showMessage(elId, msg, isError = false) { const el = document.getElementById(elId); if (el) { el.innerHTML = `<span style="color: ${isError ? '#ff7b72' : '#7effb3'}">${msg}</span>`; setTimeout(() => { if(el) el.innerHTML = ''; }, 8000); } }
+    function showProgress(text, show = true) { const el = document.getElementById('buyProgress'); if (el) { el.style.display = show ? 'block' : 'none'; el.innerText = text; } }
+
+    // 刷新所有数据
+    async function refreshAllData() {
+        if (!userAddress || !tokenContract) return;
+        try {
+            const raycBal = await tokenContract.balanceOf(userAddress);
+            document.getElementById('raycBalanceHome').innerText = formatDecimals(raycBal, 18);
+            const usdtBal = await usdtContract.balanceOf(userAddress);
+            document.getElementById('usdtBalanceHome').innerText = formatDecimals(usdtBal, 6);
+            const usdcBal = await usdcContract.balanceOf(userAddress);
+            document.getElementById('usdcBalanceHome').innerText = formatDecimals(usdcBal, 6);
+            const daiBal = await daiContract.balanceOf(userAddress);
+            document.getElementById('daiBalanceHome').innerText = formatDecimals(daiBal, 18);
+
+            if (idoContract) {
+                const start = await idoContract.startTime(); const end = await idoContract.endTime(); const rate = await idoContract.rate();
+                const total = await idoContract.totalIDOAmount(); const sold = await idoContract.soldAmount(); const remaining = await idoContract.getRemainingTokens();
+                document.getElementById('idoStartTime').innerText = new Date(start.toNumber()*1000).toLocaleString();
+                document.getElementById('idoEndTime').innerText = new Date(end.toNumber()*1000).toLocaleString();
+                const now = Date.now()/1000; let status = '';
+                if (now < start.toNumber()) status = '即将开始';
+                else if (now <= end.toNumber()) status = '进行中';
+                else status = '已结束';
+                document.getElementById('idoStatus').innerText = status;
+                document.getElementById('idoRate').innerText = `1 稳定币 = ${rate.toNumber()} RAYC`;
+                const soldFmt = formatDecimals(sold, 18); const totalFmt = formatDecimals(total, 18);
+                document.getElementById('idoProgress').innerHTML = `${soldFmt} / ${totalFmt}`;
+                document.getElementById('idoRemaining').innerText = formatDecimals(remaining, 18);
+                const percent = sold.mul(10000).div(total).toNumber() / 100;
+                document.getElementById('idoProgressFill').style.width = `${percent}%`;
+                document.getElementById('inviteLink').innerHTML = window.location.origin + window.location.pathname + '?ref=' + userAddress;
+            }
+
+            if (miningContract) {
+                let miningReferrer = await miningContract.upline(userAddress);
+                if (miningReferrer !== ethers.constants.AddressZero) {
+                    document.getElementById('myReferrer').innerHTML = miningReferrer.slice(0,6)+'...'+miningReferrer.slice(-4);
+                } else if (idoContract) {
+                    let idoReferrer = await idoContract.referrer(userAddress);
+                    document.getElementById('myReferrer').innerHTML = (idoReferrer === ethers.constants.AddressZero) ? '未绑定' : idoReferrer.slice(0,6)+'...'+idoReferrer.slice(-4);
+                } else {
+                    document.getElementById('myReferrer').innerHTML = '未绑定';
+                }
+                // 更新待领取收益总和（简单从各矿机累加）
+                let totalPending = 0;
+                const miners = await miningContract.getUserMiners(userAddress);
+                for (let i = 0; i < miners.length; i++) {
+                    const pending = await miningContract.getPendingReward(userAddress, i);
+                    totalPending += parseFloat(ethers.utils.formatEther(pending));
+                }
+                document.getElementById('pendingMiningRewardHome').innerText = totalPending.toFixed(4);
+            }
+
+            await renderMyMiners();
+            await refreshMyCommunity();
+        } catch(e) { console.error(e); }
+    }
+
+    // 矿机商城加载（购买模式）
+    async function loadMinerTypes() {
+        if (!miningContract) return;
+        const container = document.getElementById('minerTypesList');
+        container.innerHTML = '<div class="loading-spinner">加载中...</div>';
+        try {
+            let types = [];
+            for (let i = 0; i < 100; i++) {
+                try {
+                    const mt = await miningContract.minerTypes(i);
+                    if (!mt || !mt[8]) continue;  // enabled
+                    types.push({
+                        id: i,
+                        name: mt[0],
+                        totalDays: mt[1],
+                        minPurchase: ethers.utils.formatEther(mt[2]),
+                        maxPurchase: mt[3].eq(0) ? '∞' : ethers.utils.formatEther(mt[3]),
+                        dailyReleaseBps: mt[4].toNumber(),
+                        dailyRate: mt[4].toNumber() / 100,
+                        totalQuantity: mt[5].eq(0) ? '不限' : mt[5].toString(),
+                        currentQuantity: mt[6].toString(),
+                        perAddressLimit: mt[7].eq(0) ? '不限' : mt[7].toString()
+                    });
+                } catch(e) { break; }
+            }
+            if (types.length === 0) { container.innerHTML = '<p>暂无矿机，请联系管理员添加</p>'; return; }
+            let html = '';
+            for (let t of types) {
+                const sold = parseInt(t.currentQuantity);
+                const total = (t.totalQuantity === '不限') ? 0 : parseInt(t.totalQuantity);
+                const percent = total ? (sold / total * 100).toFixed(1) : 0;
+                html += `<div class="miner-item">
+                    <div><strong>${t.name}</strong> (${t.totalDays}天, 日释放 ${t.dailyRate}%)</div>
+                    <div>购买门槛: ${t.minPurchase} - ${t.maxPurchase} RAYC</div>
+                    <div>单地址限购: ${t.perAddressLimit}</div>
+                    <div>剩余: ${total ? (total - sold) : '不限'} / ${total ? total : '不限'}</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+                    <input type="number" id="purchaseAmount_${t.id}" placeholder="购买数量" step="100">
+                    <button class="purchaseMinerBtn" data-id="${t.id}">购买</button>
+                </div>`;
+            }
+            container.innerHTML = html;
+            document.querySelectorAll('.purchaseMinerBtn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = parseInt(btn.getAttribute('data-id'));
+                    const amountInput = document.getElementById(`purchaseAmount_${id}`);
+                    let amount = amountInput.value;
+                    if (!amount || parseFloat(amount) <= 0) { alert('输入有效数量'); return; }
+                    const amountWei = ethers.utils.parseEther(amount);
+                    const mt = await miningContract.minerTypes(id);
+                    if (amountWei.lt(mt[2])) {
+                        alert(`购买数量不能小于 ${ethers.utils.formatEther(mt[2])} RAYC`);
+                        return;
+                    }
+                    await purchaseMiner(id, amountWei);
+                });
+            });
+        } catch(e) { console.error(e); container.innerHTML = '<p>加载失败，请刷新页面</p>'; }
+    }
+
+    // 购买矿机函数
+    async function purchaseMiner(typeId, amountWei) {
+        if (!userAddress) { alert('请先连接钱包'); return; }
+        try {
+            const balance = await tokenContract.balanceOf(userAddress);
+            if (balance.lt(amountWei)) { alert('RAYC 余额不足'); return; }
+            const allowance = await tokenContract.allowance(userAddress, CONFIG.mining);
+            if (allowance.lt(amountWei)) {
+                showMessage('miningResult', '⏳ 授权中...');
+                const approveTx = await tokenContract.approve(CONFIG.mining, MAX_UINT256);
+                await approveTx.wait();
+                showMessage('miningResult', '✅ 授权完成，请再次点击购买按钮进行第二次确认');
+                return;
+            }
+            showMessage('miningResult', '⏳ 购买交易提交，请确认钱包...');
+            const tx = await miningContract.purchaseMiner(typeId, amountWei);
+            await tx.wait();
+            showMessage('miningResult', '✅ 购买成功！矿机已添加，24小时后开始释放收益');
+            setTimeout(async () => {
+                await refreshAllData();
+                await renderMyMiners();
+            }, 3000);
+        } catch(err) {
+            console.error(err);
+            showMessage('miningResult', '❌ 操作失败: ' + (err.message || '未知错误'), true);
+        }
+    }
+
+    // 渲染我的矿机（购买模式）
+    async function renderMyMiners() {
+        if (!miningContract || !userAddress) return;
+        const container = document.getElementById('myMinersList');
+        if (!container) return;
+        container.innerHTML = '<div class="loading-spinner">加载矿机数据...</div>';
+        try {
+            const miners = await miningContract.getUserMiners(userAddress);
+            if (!miners.length) { container.innerHTML = '<p>暂无矿机</p>'; return; }
+            let html = '';
+            for (let i = 0; i < miners.length; i++) {
+                const m = miners[i];
+                if (!m.active) continue;
+                if (m.amount.isZero()) continue;
+                try {
+                    const mt = await miningContract.minerTypes(m.minerTypeId);
+                    const pending = await miningContract.getPendingReward(userAddress, i);
+                    const pendingFmt = ethers.utils.formatEther(pending);
+                    // 计算到期时间： startTime + totalDays * 86400
+                    const start = m.startTime.toNumber();
+                    const totalDays = mt[1];
+                    const endTime = start + totalDays * 86400;
+                    const endDate = new Date(endTime * 1000).toLocaleString();
+                    const isExpired = endTime <= Math.floor(Date.now() / 1000);
+                    html += `<div class="miner-item">
+                        <div><strong>${mt[0]}</strong> | 购买: ${ethers.utils.formatEther(m.amount)} RAYC</div>
+                        <div>待领取: ${pendingFmt} RAYC</div>
+                        <div>到期时间: ${endDate} ${isExpired ? '<span style="color:#ffaa66;"> (已失效)</span>' : ''}</div>
+                        <button class="claimRewardBtn" data-id="${i}">领取收益</button>
+                    </div>`;
+                } catch(errItem) {
+                    console.error(`渲染矿机索引${i}出错:`, errItem);
+                }
+            }
+            if (html === "") container.innerHTML = '<p>没有活跃的矿机</p>';
+            else container.innerHTML = html;
+            // 绑定领取收益按钮
+            document.querySelectorAll('.claimRewardBtn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = parseInt(btn.getAttribute('data-id'));
+                    try {
+                        const tx = await miningContract.claimReward(id);
+                        await tx.wait();
+                        showMessage('miningResult', '✅ 收益已领取');
+                        await refreshAllData();
+                        await renderMyMiners();
+                    } catch(err) { showMessage('miningResult', '❌ '+err.message, true); }
+                });
+            });
+        } catch(e) {
+            console.error("renderMyMiners失败:", e);
+            container.innerHTML = '<p>加载失败，请刷新页面重试</p>';
+        }
+    }
+
+    async function claimAllRewards() {
+        try {
+            const tx = await miningContract.claimAllRewards();
+            await tx.wait();
+            showMessage('miningResult', '✅ 所有收益已领取');
+            await refreshAllData();
+            await renderMyMiners();
+        } catch(err) { showMessage('miningResult', '❌ '+err.message, true); }
+    }
+    document.getElementById('claimAllMiningBtn').onclick = claimAllRewards;
+    document.getElementById('refreshMinerListBtn').onclick = () => { renderMyMiners(); refreshAllData(); };
+
+    // ========== IDO 购买逻辑（改为读取选中的按钮） ==========
+    // 当前选中的代币
+    let selectedPayToken = 'usdt';
+
+    // 绑定代币按钮点击事件
+    function initTokenButtons() {
+        const btns = document.querySelectorAll('.token-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 移除所有 active 类
+                btns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedPayToken = btn.getAttribute('data-token');
+            });
+        });
+    }
+    initTokenButtons();
+
+    document.getElementById('buyBtn').onclick = async () => {
+        if (!userAddress) { alert('请先连接钱包'); return; }
+        const payToken = selectedPayToken;  // 使用选中的代币
+        let amount = parseFloat(document.getElementById('payAmount').value);
+        if (isNaN(amount) || amount <= 0) { alert('输入有效数量'); return; }
+        let referrer = document.getElementById('idoReferrerAddr').value.trim() || ethers.constants.AddressZero;
+        let contractMethod, decimals, amountWei;
+        if (payToken === 'usdt') { contractMethod = idoContract.buyUSDT; decimals = 6; amountWei = ethers.utils.parseUnits(amount.toString(), decimals); }
+        else if (payToken === 'usdc') { contractMethod = idoContract.buyUSDC; decimals = 6; amountWei = ethers.utils.parseUnits(amount.toString(), decimals); }
+        else { contractMethod = idoContract.buyDAI; decimals = 18; amountWei = ethers.utils.parseUnits(amount.toString(), decimals); }
+        const payContract = payToken === 'usdt' ? usdtContract : (payToken === 'usdc' ? usdcContract : daiContract);
+        try {
+            const allowance = await payContract.allowance(userAddress, CONFIG.ido);
+            if (allowance.lt(amountWei)) {
+                const approveTx = await payContract.approve(CONFIG.ido, MAX_UINT256);
+                await approveTx.wait();
+            }
+            const tx = await contractMethod(amountWei, referrer);
+            document.getElementById('buyProgress').style.display = 'block';
+            document.getElementById('buyProgress').innerText = '⏳ 交易中...';
+            await tx.wait();
+            showMessage('buyResult', '✅ 购买成功！');
+            await refreshAllData();
+        } catch(err) { showMessage('buyResult', '❌ '+err.message, true); }
+        finally { document.getElementById('buyProgress').style.display = 'none'; }
+    };
+
+    // 绑定推荐人
+    document.getElementById('bindMiningReferralBtn').onclick = async () => {
+        if (!userAddress) { alert('请先连接钱包'); return; }
+        const uplineAddr = document.getElementById('miningReferrerAddr').value.trim();
+        if (!ethers.utils.isAddress(uplineAddr)) { alert('请输入有效的钱包地址'); return; }
+        if (uplineAddr.toLowerCase() === userAddress.toLowerCase()) { alert('不能绑定自己'); return; }
+        try {
+            const currentUpline = await miningContract.upline(userAddress);
+            if (currentUpline !== ethers.constants.AddressZero) {
+                alert(`您已经绑定了推荐人：${currentUpline.slice(0,6)}...${currentUpline.slice(-4)}，不能重复绑定`);
+                return;
+            }
+            const tx = await miningContract.bindReferral(uplineAddr);
+            await tx.wait();
+            alert('绑定成功！');
+            await refreshAllData();
+            document.getElementById('miningReferrerAddr').value = '';
+        } catch(err) { alert('绑定失败: ' + err.message); }
+    };
+
+    // 从IDO迁移推荐关系
+    document.getElementById('migrateReferralBtn').onclick = async () => {
+        if (!userAddress) { alert('请先连接钱包'); return; }
+        if (!idoContract) { alert('IDO合约未配置'); return; }
+        try {
+            const currentUpline = await miningContract.upline(userAddress);
+            if (currentUpline !== ethers.constants.AddressZero) { alert('挖矿已绑定推荐人，无需迁移'); return; }
+            const idoReferrer = await idoContract.referrer(userAddress);
+            if (idoReferrer === ethers.constants.AddressZero) { alert('您在IDO中没有推荐人，无法迁移'); return; }
+            const tx = await miningContract.bindReferral(idoReferrer);
+            await tx.wait();
+            alert('迁移成功！现在挖矿时将享受推荐奖励');
+            await refreshAllData();
+        } catch(err) { alert('迁移失败: ' + err.message); }
+    };
+
+    // 社区列表加载
+    async function loadCommunities() {
+        if (!communityContract) return;
+        const container = document.getElementById('communityList');
+        container.innerHTML = '<div class="loading-spinner">加载中...</div>';
+        let html = '';
+        for (let i = 1; i <= 200; i++) {
+            try {
+                const c = await communityContract.communities(i);
+                if (!c.active) continue;
+                html += `<div class="community-item">
+                    <div><strong>${c.name}</strong> (ID: ${i})</div>
+                    <div>主任: ${c.leader === ethers.constants.AddressZero ? '未设置' : c.leader.slice(0,6)+'...'+c.leader.slice(-4)}</div>
+                    <div>总购买: ${ethers.utils.formatEther(c.totalPurchased)} RAYC</div>
+                    <button class="joinCommunityBtn" data-id="${i}">加入</button>
+                </div>`;
+            } catch(e) { break; }
+        }
+        container.innerHTML = html || '<p>暂无社区</p>';
+        document.querySelectorAll('.joinCommunityBtn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const cid = parseInt(btn.getAttribute('data-id'));
+                try {
+                    const tx = await communityContract.joinCommunity(cid);
+                    await tx.wait();
+                    alert('加入成功');
+                    await refreshAllData();
+                } catch(err) { alert('失败: '+err.message); }
+            });
+        });
+    }
+
+    // 刷新我的社区信息（社区总购买）
+    async function refreshMyCommunity() {
+        if (!communityContract || !miningContract || !userAddress) return;
+        const cid = await communityContract.userCommunity(userAddress);
+        if (cid.eq(0)) {
+            document.getElementById('myCommunity').innerText = '未加入';
+            document.getElementById('communityTotalStake').innerText = '0';
+            return;
+        }
+        const c = await communityContract.communities(cid);
+        // 修复社区名称显示
+        let displayName = c.name;
+        if (!displayName.includes(cid.toString())) displayName = `Community ${cid}`;
+        document.getElementById('myCommunity').innerText = displayName;
+        document.getElementById('communityLeader').innerText = c.leader === ethers.constants.AddressZero ? '无' : c.leader.slice(0,6)+'...'+c.leader.slice(-4);
+        // 从挖矿合约获取社区总购买金额
+        const totalPurchased = await miningContract.getCommunityTotalPurchased(cid);
+        document.getElementById('communityTotalStake').innerText = ethers.utils.formatEther(totalPurchased);
+    }
+    document.getElementById('refreshCommunityBtn').onclick = () => { loadCommunities(); refreshMyCommunity(); };
+
+    // 连接钱包
+    function detectProvider() {
+        if (window.okxwallet) return window.okxwallet;
+        if (window.BinanceChain) return window.BinanceChain;
+        return window.ethereum;
+    }
+
+    async function connectWallet() {
+        const providerInstance = detectProvider();
+        if (!providerInstance) {
+            alert('未检测到钱包，请安装 MetaMask 或使用欧易/币安 Web3 钱包');
+            return;
+        }
+        try {
+            await providerInstance.request({ method: 'eth_requestAccounts' });
+            const web3Provider = new ethers.providers.Web3Provider(providerInstance);
+            web3Provider.ens = null;
+            const network = await web3Provider.getNetwork();
+            let chainId = network.chainId;
+            if (typeof chainId === 'string' && chainId.startsWith('0x')) chainId = parseInt(chainId, 16);
+            if (chainId !== CONFIG.chainId) {
+                try {
+                    await providerInstance.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: `0x${CONFIG.chainId.toString(16)}` }],
+                    });
+                } catch (switchError) {
+                    alert(`请手动切换到 Polygon 主网 (Chain ID: ${CONFIG.chainId})`);
+                    return;
+                }
+            }
+            signer = web3Provider.getSigner();
+            userAddress = await signer.getAddress();
+            document.getElementById('walletInfo').innerHTML = `📍 ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+            document.getElementById('connectBtn').innerHTML = '✅ 已连接';
+            tokenContract = new ethers.Contract(CONFIG.rayc, ERC20_ABI, signer);
+            usdtContract = new ethers.Contract(CONFIG.usdt, ERC20_ABI, signer);
+            usdcContract = new ethers.Contract(CONFIG.usdc, ERC20_ABI, signer);
+            daiContract = new ethers.Contract(CONFIG.dai, ERC20_ABI, signer);
+            idoContract = new ethers.Contract(CONFIG.ido, IDO_ABI, signer);
+            miningContract = new ethers.Contract(CONFIG.mining, MINING_ABI, signer);
+            communityContract = new ethers.Contract(CONFIG.community, COMMUNITY_ABI, signer);
+            await refreshAllData();
+            await loadMinerTypes();
+            await renderMyMiners();
+            await loadCommunities();
+            await refreshMyCommunity();
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(async () => { if(userAddress) { refreshAllData(); renderMyMiners(); loadCommunities(); refreshMyCommunity(); } }, 30000);
+        } catch(e) {
+            console.error(e);
+            alert('连接钱包失败: ' + e.message);
+        }
+    }
+    document.getElementById('connectBtn').onclick = connectWallet;
+
+    // Tab切换
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tid = btn.getAttribute('data-page');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`${tid}-page`).classList.add('active');
+            if (tid === 'mining') { loadMinerTypes(); renderMyMiners(); }
+            if (tid === 'community') { loadCommunities(); refreshMyCommunity(); }
+        });
+    });
+
+    function fallbackCopy(text) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('复制成功'); }
+    document.getElementById('copyLinkBtn').onclick = () => {
+        const link = document.getElementById('inviteLink').innerText;
+        if (link) { navigator.clipboard ? navigator.clipboard.writeText(link).catch(()=>fallbackCopy(link)) : fallbackCopy(link); }
+    };
+    if (window.ethereum) {
+        window.ethereum.on('chainChanged', () => window.location.reload());
+        window.ethereum.on('accountsChanged', () => connectWallet());
+    }
+    if (window.okxwallet) window.okxwallet.on('accountsChanged', () => connectWallet());
+    if (window.BinanceChain) window.BinanceChain.on('accountsChanged', () => connectWallet());
+</script>
+</body>
+</html>
