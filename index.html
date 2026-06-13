@@ -99,8 +99,8 @@
             <div class="card">
                 <h2>🌐 官方链接</h2>
                 <div class="external-links">
-                    <a href="https://riyuejiutian1979.github.io/raymond-RAYC-1" class="external-link-btn" target="_blank" id="officialWebsiteBtn">官网</a>
-                    <a href="https://riyuejiutian1979.github.io/raymond-index-0275.html" class="external-link-btn" target="_blank" id="teamBtn">团队建设</a>
+                    <a href="https://www.raymondchain.com/raymond-rayc/index.html" class="external-link-btn" target="_blank" id="officialWebsiteBtn">官网</a>
+                    <a href="https://www.raymondchain.com/raymond-rayc/0275.html" class="external-link-btn" target="_blank" id="teamBtn">团队建设</a>
                 </div>
                 <div class="info-row" style="border-bottom:none; margin-top:12px; justify-content:center; font-size:12px; color:#aaffaa;">
                     🔗 点击按钮访问官方网站和团队介绍
@@ -110,7 +110,7 @@
         <div class="card" style="text-align:center;"><p data-i18n="footer_note">🔗 使用上方导航栏进入 IDO、矿机购买、生态社区</p><p data-i18n="note_confirm">⚡ 首次购买需两次确认（授权+购买）</p></div>
     </div>
 
-    <!-- IDO 页面（改用按钮选择代币） -->
+    <!-- IDO 页面 -->
     <div id="ido-page" class="page">
         <div class="grid">
             <div class="card"><h2 data-i18n="ido_info_title">📈 IDO 信息</h2>
@@ -125,7 +125,6 @@
             </div>
             <div class="card"><h2 data-i18n="ido_participate_title">🎯 参与 IDO</h2>
                 <div class="reward-rate"><span data-i18n="referral_reward_info">推荐奖励：一级 1% | 二级 2%</span></div>
-                <!-- 代币选择按钮组，替代下拉菜单 -->
                 <div class="token-buttons" id="tokenButtons">
                     <div class="token-btn active" data-token="usdt">USDT</div>
                     <div class="token-btn" data-token="usdc">USDC</div>
@@ -140,7 +139,7 @@
         </div>
     </div>
 
-    <!-- 挖矿页面（购买模式） -->
+    <!-- 挖矿页面 -->
     <div id="mining-page" class="page">
         <div class="grid">
             <div class="card"><h2 data-i18n="mining_shop">⛏️ RAYC矿机</h2><div id="minerTypesList"></div></div>
@@ -164,7 +163,7 @@
         </div>
     </div>
 
-    <!-- 生态社区页面 -->
+    <!-- 社区页面 -->
     <div id="community-page" class="page">
         <div class="grid">
             <div class="card"><h2 data-i18n="community_list_title">🌿 社区列表</h2><div id="communityList"></div></div>
@@ -180,7 +179,7 @@
 </div>
 
 <script>
-    // ==================== 多语言词典（仅展示中文，英文省略以简化） ====================
+    // ==================== 多语言词典 ====================
     const translations = {
         zh: {
             assets_title: "💎 我的资产", rayc_balance: "RAYC 余额", pending_mining: "待领取收益", pending_referral: "推荐奖励待领取",
@@ -200,23 +199,21 @@
         }
     };
     let currentLang = 'zh';
-    function setLanguage(lang) { /* 简单处理，不实现完整多语言切换 */ }
+    function setLanguage(lang) { /* 多语言简单处理 */ }
     setLanguage('zh');
 
-    // ==================== 合约配置（请使用您的实际地址） ====================
+    // ==================== 合约配置 ====================
+    // 唯一硬编码地址：链上配置合约
     const CONFIG = {
         chainId: 137,
-        rayc: "0x00264cF668b959f87998f54e239D2E93D42A5Fc3",
-        ido: "0x532839689ADED86AB60D8ef182E3556522b58C76",
-        mining: "0x4635120AFAa7B9a68764240CbE8F79fc06FAEa39",   // 购买模式挖矿合约
-        community: "0xCA97Be70E10fD071Dff37b01a154EC81391A98F2", // 社区合约
+        configContract: "0x9A1f3F1275228f449A57155671Ee735BE349201f",
         usdt: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
         usdc: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
         dai: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
     };
     const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
-    // ABI 定义（适配购买模式）
+    // ABI 定义
     const ERC20_ABI = ["function balanceOf(address) view returns (uint256)","function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
     const IDO_ABI = [
         "function buyUSDT(uint256 usdtAmount, address referrer)",
@@ -234,7 +231,6 @@
         "function level2RewardRate() view returns (uint256)",
         "function owner() view returns (address)"
     ];
-    // 购买模式挖矿合约 ABI
     const MINING_ABI = [
         "function minerTypes(uint256) view returns (string, uint32, uint256, uint256, uint256, uint256, uint256, uint256, bool)",
         "function purchaseMiner(uint256 minerTypeId, uint256 amount)",
@@ -253,6 +249,13 @@
         "function communities(uint256) view returns (string name, address leader, uint256 totalPurchased, bool active)",
         "function userCommunity(address) view returns (uint256)",
         "function getCommunityMembers(uint256) view returns (address[])"
+    ];
+    // 配置合约 ABI（只读）
+    const CONFIG_ABI = [
+        "function raycToken() view returns (address)",
+        "function idoContract() view returns (address)",
+        "function miningContract() view returns (address)",
+        "function communityContract() view returns (address)"
     ];
 
     let provider, signer, userAddress;
@@ -305,7 +308,6 @@
                 } else {
                     document.getElementById('myReferrer').innerHTML = '未绑定';
                 }
-                // 更新待领取收益总和（简单从各矿机累加）
                 let totalPending = 0;
                 const miners = await miningContract.getUserMiners(userAddress);
                 for (let i = 0; i < miners.length; i++) {
@@ -320,7 +322,7 @@
         } catch(e) { console.error(e); }
     }
 
-    // 矿机商城加载（购买模式）
+    // 矿机商城加载
     async function loadMinerTypes() {
         if (!miningContract) return;
         const container = document.getElementById('minerTypesList');
@@ -330,14 +332,13 @@
             for (let i = 0; i < 100; i++) {
                 try {
                     const mt = await miningContract.minerTypes(i);
-                    if (!mt || !mt[8]) continue;  // enabled
+                    if (!mt || !mt[8]) continue;
                     types.push({
                         id: i,
                         name: mt[0],
                         totalDays: mt[1],
                         minPurchase: ethers.utils.formatEther(mt[2]),
                         maxPurchase: mt[3].eq(0) ? '∞' : ethers.utils.formatEther(mt[3]),
-                        dailyReleaseBps: mt[4].toNumber(),
                         dailyRate: mt[4].toNumber() / 100,
                         totalQuantity: mt[5].eq(0) ? '不限' : mt[5].toString(),
                         currentQuantity: mt[6].toString(),
@@ -380,16 +381,15 @@
         } catch(e) { console.error(e); container.innerHTML = '<p>加载失败，请刷新页面</p>'; }
     }
 
-    // 购买矿机函数
     async function purchaseMiner(typeId, amountWei) {
         if (!userAddress) { alert('请先连接钱包'); return; }
         try {
             const balance = await tokenContract.balanceOf(userAddress);
             if (balance.lt(amountWei)) { alert('RAYC 余额不足'); return; }
-            const allowance = await tokenContract.allowance(userAddress, CONFIG.mining);
+            const allowance = await tokenContract.allowance(userAddress, miningContract.address);
             if (allowance.lt(amountWei)) {
                 showMessage('miningResult', '⏳ 授权中...');
-                const approveTx = await tokenContract.approve(CONFIG.mining, MAX_UINT256);
+                const approveTx = await tokenContract.approve(miningContract.address, MAX_UINT256);
                 await approveTx.wait();
                 showMessage('miningResult', '✅ 授权完成，请再次点击购买按钮进行第二次确认');
                 return;
@@ -408,7 +408,6 @@
         }
     }
 
-    // 渲染我的矿机（购买模式）
     async function renderMyMiners() {
         if (!miningContract || !userAddress) return;
         const container = document.getElementById('myMinersList');
@@ -426,7 +425,6 @@
                     const mt = await miningContract.minerTypes(m.minerTypeId);
                     const pending = await miningContract.getPendingReward(userAddress, i);
                     const pendingFmt = ethers.utils.formatEther(pending);
-                    // 计算到期时间： startTime + totalDays * 86400
                     const start = m.startTime.toNumber();
                     const totalDays = mt[1];
                     const endTime = start + totalDays * 86400;
@@ -438,13 +436,10 @@
                         <div>到期时间: ${endDate} ${isExpired ? '<span style="color:#ffaa66;"> (已失效)</span>' : ''}</div>
                         <button class="claimRewardBtn" data-id="${i}">领取收益</button>
                     </div>`;
-                } catch(errItem) {
-                    console.error(`渲染矿机索引${i}出错:`, errItem);
-                }
+                } catch(errItem) { console.error(errItem); }
             }
             if (html === "") container.innerHTML = '<p>没有活跃的矿机</p>';
             else container.innerHTML = html;
-            // 绑定领取收益按钮
             document.querySelectorAll('.claimRewardBtn').forEach(btn => {
                 btn.addEventListener('click', async () => {
                     const id = parseInt(btn.getAttribute('data-id'));
@@ -475,16 +470,12 @@
     document.getElementById('claimAllMiningBtn').onclick = claimAllRewards;
     document.getElementById('refreshMinerListBtn').onclick = () => { renderMyMiners(); refreshAllData(); };
 
-    // ========== IDO 购买逻辑（改为读取选中的按钮） ==========
-    // 当前选中的代币
+    // IDO 购买
     let selectedPayToken = 'usdt';
-
-    // 绑定代币按钮点击事件
     function initTokenButtons() {
         const btns = document.querySelectorAll('.token-btn');
         btns.forEach(btn => {
             btn.addEventListener('click', () => {
-                // 移除所有 active 类
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedPayToken = btn.getAttribute('data-token');
@@ -495,7 +486,7 @@
 
     document.getElementById('buyBtn').onclick = async () => {
         if (!userAddress) { alert('请先连接钱包'); return; }
-        const payToken = selectedPayToken;  // 使用选中的代币
+        const payToken = selectedPayToken;
         let amount = parseFloat(document.getElementById('payAmount').value);
         if (isNaN(amount) || amount <= 0) { alert('输入有效数量'); return; }
         let referrer = document.getElementById('idoReferrerAddr').value.trim() || ethers.constants.AddressZero;
@@ -505,9 +496,9 @@
         else { contractMethod = idoContract.buyDAI; decimals = 18; amountWei = ethers.utils.parseUnits(amount.toString(), decimals); }
         const payContract = payToken === 'usdt' ? usdtContract : (payToken === 'usdc' ? usdcContract : daiContract);
         try {
-            const allowance = await payContract.allowance(userAddress, CONFIG.ido);
+            const allowance = await payContract.allowance(userAddress, idoContract.address);
             if (allowance.lt(amountWei)) {
-                const approveTx = await payContract.approve(CONFIG.ido, MAX_UINT256);
+                const approveTx = await payContract.approve(idoContract.address, MAX_UINT256);
                 await approveTx.wait();
             }
             const tx = await contractMethod(amountWei, referrer);
@@ -556,7 +547,7 @@
         } catch(err) { alert('迁移失败: ' + err.message); }
     };
 
-    // 社区列表加载
+    // 社区
     async function loadCommunities() {
         if (!communityContract) return;
         const container = document.getElementById('communityList');
@@ -588,7 +579,6 @@
         });
     }
 
-    // 刷新我的社区信息（社区总购买）
     async function refreshMyCommunity() {
         if (!communityContract || !miningContract || !userAddress) return;
         const cid = await communityContract.userCommunity(userAddress);
@@ -598,18 +588,16 @@
             return;
         }
         const c = await communityContract.communities(cid);
-        // 修复社区名称显示
         let displayName = c.name;
         if (!displayName.includes(cid.toString())) displayName = `Community ${cid}`;
         document.getElementById('myCommunity').innerText = displayName;
         document.getElementById('communityLeader').innerText = c.leader === ethers.constants.AddressZero ? '无' : c.leader.slice(0,6)+'...'+c.leader.slice(-4);
-        // 从挖矿合约获取社区总购买金额
         const totalPurchased = await miningContract.getCommunityTotalPurchased(cid);
         document.getElementById('communityTotalStake').innerText = ethers.utils.formatEther(totalPurchased);
     }
     document.getElementById('refreshCommunityBtn').onclick = () => { loadCommunities(); refreshMyCommunity(); };
 
-    // 连接钱包
+    // 连接钱包（核心改动：从配置合约读取地址）
     function detectProvider() {
         if (window.okxwallet) return window.okxwallet;
         if (window.BinanceChain) return window.BinanceChain;
@@ -644,13 +632,26 @@
             userAddress = await signer.getAddress();
             document.getElementById('walletInfo').innerHTML = `📍 ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
             document.getElementById('connectBtn').innerHTML = '✅ 已连接';
-            tokenContract = new ethers.Contract(CONFIG.rayc, ERC20_ABI, signer);
+
+            // 1. 创建配置合约实例并读取地址
+            const configContract = new ethers.Contract(CONFIG.configContract, CONFIG_ABI, signer);
+            const [raycAddr, idoAddr, miningAddr, communityAddr] = await Promise.all([
+                configContract.raycToken(),
+                configContract.idoContract(),
+                configContract.miningContract(),
+                configContract.communityContract()
+            ]);
+
+            // 2. 初始化稳定币合约
             usdtContract = new ethers.Contract(CONFIG.usdt, ERC20_ABI, signer);
             usdcContract = new ethers.Contract(CONFIG.usdc, ERC20_ABI, signer);
             daiContract = new ethers.Contract(CONFIG.dai, ERC20_ABI, signer);
-            idoContract = new ethers.Contract(CONFIG.ido, IDO_ABI, signer);
-            miningContract = new ethers.Contract(CONFIG.mining, MINING_ABI, signer);
-            communityContract = new ethers.Contract(CONFIG.community, COMMUNITY_ABI, signer);
+            // 3. 初始化核心合约
+            tokenContract = new ethers.Contract(raycAddr, ERC20_ABI, signer);
+            idoContract = new ethers.Contract(idoAddr, IDO_ABI, signer);
+            miningContract = new ethers.Contract(miningAddr, MINING_ABI, signer);
+            communityContract = new ethers.Contract(communityAddr, COMMUNITY_ABI, signer);
+
             await refreshAllData();
             await loadMinerTypes();
             await renderMyMiners();
